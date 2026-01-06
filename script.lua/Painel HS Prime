@@ -1,0 +1,161 @@
+--// Painel HS Prime - Versão Final Compacta
+
+if game.CoreGui:FindFirstChild("PainelHSPrime") then
+    game.CoreGui.PainelHSPrime:Destroy()
+end
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Cam = workspace.CurrentCamera
+local LocalPlayer = Players.LocalPlayer
+
+--================ CONFIG =================--
+local fov = 1
+local fovNormal = 1
+local fovMax = 230
+local aimbotOn = false
+local targetMode = "Head"
+local conn
+
+--================ FOV CIRCLE ===================
+local FOVring = Drawing.new("Circle")
+FOVring.Visible = false
+FOVring.Thickness = 2
+FOVring.Color = Color3.fromRGB(255,0,0)
+FOVring.Filled = false
+FOVring.Radius = fov
+
+--================ FUNÇÕES ===================
+local function updateDrawings()
+    FOVring.Position = Cam.ViewportSize / 2
+    FOVring.Radius = fov
+end
+
+local function lookAt(target)
+    local dir = (target - Cam.CFrame.Position).Unit
+    Cam.CFrame = CFrame.new(Cam.CFrame.Position, Cam.CFrame.Position + dir)
+end
+
+local function getClosest()
+    local nearest, dist = nil, math.huge
+    local center = Cam.ViewportSize / 2
+
+    for _,p in ipairs(Players:GetPlayers()) do
+        if p ~= LocalPlayer and p.Character then
+            local part =
+                targetMode == "Head"
+                and p.Character:FindFirstChild("Head")
+                or p.Character:FindFirstChild("UpperTorso")
+                or p.Character:FindFirstChild("Torso")
+
+            if part then
+                local pos, vis = Cam:WorldToViewportPoint(part.Position)
+                local d = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+                if vis and d < fov and d < dist then
+                    dist = d
+                    nearest = part
+                end
+            end
+        end
+    end
+    return nearest
+end
+
+local function startAimbot()
+    FOVring.Visible = true
+    if conn then conn:Disconnect() end
+    conn = RunService.RenderStepped:Connect(function()
+        updateDrawings()
+        local t = getClosest()
+        if t then lookAt(t.Position) end
+    end)
+end
+
+local function stopAimbot()
+    FOVring.Visible = false
+    if conn then conn:Disconnect() conn = nil end
+end
+
+--================ UI ===================
+local gui = Instance.new("ScreenGui", game.CoreGui)
+gui.Name = "PainelHSPrime"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame", gui)
+frame.Size = UDim2.new(0,210,0,150)  -- altura reduzida para remover faixa preta
+frame.Position = UDim2.new(0.35,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(0,0,0)
+frame.Active = true
+frame.Draggable = true
+frame.BorderSizePixel = 0
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,25)
+title.Text = "Painel HS Prime"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 16
+
+--================ BOTÃO BOLINHA ===================
+local function circleButton(text, pos)
+    local container = Instance.new("Frame", frame)
+    container.Size = UDim2.new(0,160,0,30)
+    container.Position = pos
+    container.BackgroundTransparency = 1
+
+    local dot = Instance.new("TextButton", container)
+    dot.Size = UDim2.new(0,18,0,18)
+    dot.Position = UDim2.new(0,0,0,6)
+    dot.BackgroundColor3 = Color3.fromRGB(35,35,35)
+    dot.BorderSizePixel = 0
+    dot.AutoButtonColor = false
+    Instance.new("UICorner", dot).CornerRadius = UDim.new(1,0)
+
+    local label = Instance.new("TextLabel", container)
+    label.Position = UDim2.new(0,25,0,0)
+    label.Size = UDim2.new(1,-25,1,0)
+    label.BackgroundTransparency = 1
+    label.Text = text
+    label.TextColor3 = Color3.new(1,1,1)
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = 14
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    return dot
+end
+
+--================ BOTÕES ===================
+local aimbotBtn = circleButton("AIMBOT", UDim2.new(0,20,0,35))
+local fovBtn = circleButton("FOV MAX", UDim2.new(0,20,0,70))
+
+aimbotBtn.MouseButton1Click:Connect(function()
+    aimbotOn = not aimbotOn
+    aimbotBtn.BackgroundColor3 = aimbotOn and Color3.fromRGB(255,0,0) or Color3.fromRGB(35,35,35)
+    if aimbotOn then startAimbot() else stopAimbot() end
+end)
+
+fovBtn.MouseButton1Click:Connect(function()
+    local isMax = fov ~= fovMax
+    fov = isMax and fovMax or fovNormal
+    fovBtn.BackgroundColor3 = isMax and Color3.fromRGB(255,0,0) or Color3.fromRGB(35,35,35)
+end)
+
+--================ CABEÇA / PEITO (RÁDIO) ===================
+local headDot = circleButton("CABEÇA", UDim2.new(0,20,0,110))
+local chestDot = circleButton("PEITO", UDim2.new(0,120,0,110))
+
+-- 🔴 começa com cabeça ativa
+headDot.BackgroundColor3 = Color3.fromRGB(255,0,0)
+
+headDot.MouseButton1Click:Connect(function()
+    targetMode = "Head"
+    headDot.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    chestDot.BackgroundColor3 = Color3.fromRGB(35,35,35)
+end)
+
+chestDot.MouseButton1Click:Connect(function()
+    targetMode = "Chest"
+    chestDot.BackgroundColor3 = Color3.fromRGB(255,0,0)
+    headDot.BackgroundColor3 = Color3.fromRGB(35,35,35)
+end)
