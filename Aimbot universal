@@ -1,0 +1,344 @@
+-- SERVICES
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
+
+local player = Players.LocalPlayer
+local camera = workspace.CurrentCamera
+
+-- VARIÁVEIS AIM
+local aimActive = false
+local fovValue = 100
+local stickyForce = 0.9
+
+-- VARIÁVEIS ESP
+local ESP_Line = true
+local ESP_Box = true
+local ESP_Health = true
+local ESPObjects = {}
+
+-- CONFIG ESP
+local ESPSettings = {
+    LineColor = Color3.fromRGB(255,255,255),
+    Thickness = 1.5,
+    MaxDistance = 1200,
+    MinBoxWidth = 1,
+    MinBoxHeight = 1
+}
+
+-- GUI
+local mainGui = Instance.new("ScreenGui")
+mainGui.Name = "DeltaMini"
+mainGui.IgnoreGuiInset = true
+pcall(function() mainGui.Parent = CoreGui end)
+if not mainGui.Parent then mainGui.Parent = player.PlayerGui end
+
+local frame = Instance.new("Frame", mainGui)
+frame.Size = UDim2.new(0,180,0,230)
+frame.Position = UDim2.new(0.05,0,0.3,0)
+frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+frame.Active = true
+frame.Draggable = true
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,8)
+
+-- TÍTULO
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1,0,0,28)
+title.Text = "aimbot universal"
+title.TextColor3 = Color3.new(1,1,1)
+title.BackgroundTransparency = 1
+title.Font = Enum.Font.GothamBold
+title.TextSize = 13
+
+-- ABAS MAIS “BARRUDAS”
+local tabAim = Instance.new("TextButton", frame)
+tabAim.Size = UDim2.new(0.5,0,0,28)
+tabAim.Position = UDim2.new(0,0,0.16,0)
+tabAim.Text = "AIM"
+tabAim.BackgroundColor3 = Color3.fromRGB(30,150,30)
+tabAim.TextColor3 = Color3.new(1,1,1)
+tabAim.Font = Enum.Font.Gotham
+tabAim.TextSize = 12
+Instance.new("UICorner", tabAim).CornerRadius = UDim.new(0,6)
+
+local tabESP = Instance.new("TextButton", frame)
+tabESP.Size = UDim2.new(0.5,0,0,28)
+tabESP.Position = UDim2.new(0.5,0,0.16,0)
+tabESP.Text = "ESP"
+tabESP.BackgroundColor3 = Color3.fromRGB(60,60,60)
+tabESP.TextColor3 = Color3.new(1,1,1)
+tabESP.Font = Enum.Font.Gotham
+tabESP.TextSize = 12
+Instance.new("UICorner", tabESP).CornerRadius = UDim.new(0,6)
+
+-- CONTAINERS
+local AimFrame = Instance.new("Frame", frame)
+AimFrame.Size = UDim2.new(1,0,1,-70)
+AimFrame.Position = UDim2.new(0,0,0.3,0)
+AimFrame.BackgroundTransparency = 1
+
+local ESPFrame = Instance.new("Frame", frame)
+ESPFrame.Size = AimFrame.Size
+ESPFrame.Position = AimFrame.Position
+ESPFrame.BackgroundTransparency = 1
+ESPFrame.Visible = false
+
+-- BOTÃO AIM CENTRALIZADO
+local aimBtn = Instance.new("TextButton", AimFrame)
+aimBtn.Size = UDim2.new(0,120,0,40)
+aimBtn.Position = UDim2.new(0.5,-60,0.2,0)
+aimBtn.Text = "AIM OFF"
+aimBtn.BackgroundColor3 = Color3.fromRGB(150,30,30)
+aimBtn.TextColor3 = Color3.new(1,1,1)
+aimBtn.Font = Enum.Font.Gotham
+aimBtn.TextSize = 14
+Instance.new("UICorner", aimBtn).CornerRadius = UDim.new(0,6)
+
+-- LABEL FOV
+local sliderLabel = Instance.new("TextLabel", AimFrame)
+sliderLabel.Position = UDim2.new(0,0,0.55,0)
+sliderLabel.Size = UDim2.new(1,0,0,18)
+sliderLabel.Text = "FOV: "..fovValue
+sliderLabel.TextColor3 = Color3.fromRGB(180,180,180)
+sliderLabel.BackgroundTransparency = 1
+sliderLabel.TextSize = 12
+
+-- SLIDER FOV
+local sliderBack = Instance.new("Frame", AimFrame)
+sliderBack.Size = UDim2.new(0,120,0,4)
+sliderBack.Position = UDim2.new(0.5,-60,0.7,0)
+sliderBack.BackgroundColor3 = Color3.fromRGB(50,50,50)
+
+local sliderBall = Instance.new("TextButton", sliderBack)
+sliderBall.Size = UDim2.new(0,14,0,14)
+sliderBall.Position = UDim2.new(fovValue/360,-7,0.5,-7)
+sliderBall.BackgroundColor3 = Color3.fromRGB(0,255,255)
+sliderBall.Text = ""
+Instance.new("UICorner", sliderBall).CornerRadius = UDim.new(1,0)
+
+-- BOTÕES ESP ESTICADOS
+local buttonHeight = 35
+local buttonSpacing = 10
+
+local espLineBtn = Instance.new("TextButton", ESPFrame)
+espLineBtn.Size = UDim2.new(0,150,0,buttonHeight)
+espLineBtn.Position = UDim2.new(0.5,-75,0,10)
+espLineBtn.Text = "ESP LINE ON"
+espLineBtn.BackgroundColor3 = Color3.fromRGB(30,150,30)
+espLineBtn.TextColor3 = Color3.new(1,1,1)
+espLineBtn.Font = Enum.Font.Gotham
+espLineBtn.TextSize = 12
+Instance.new("UICorner", espLineBtn).CornerRadius = UDim.new(0,6)
+
+local espBoxBtn = espLineBtn:Clone()
+espBoxBtn.Parent = ESPFrame
+espBoxBtn.Position = UDim2.new(0.5,-75,0,10+buttonHeight+buttonSpacing)
+espBoxBtn.Text = "ESP BOX ON"
+
+local espHealthBtn = espLineBtn:Clone()
+espHealthBtn.Parent = ESPFrame
+espHealthBtn.Position = UDim2.new(0.5,-75,0,10+2*(buttonHeight+buttonSpacing))
+espHealthBtn.Text = "ESP HEALTH ON"
+
+-- ABAS FUNCIONAMENTO
+tabAim.MouseButton1Click:Connect(function()
+	AimFrame.Visible = true
+	ESPFrame.Visible = false
+	tabAim.BackgroundColor3 = Color3.fromRGB(30,150,30)
+	tabESP.BackgroundColor3 = Color3.fromRGB(60,60,60)
+end)
+
+tabESP.MouseButton1Click:Connect(function()
+	AimFrame.Visible = false
+	ESPFrame.Visible = true
+	tabESP.BackgroundColor3 = Color3.fromRGB(30,150,30)
+	tabAim.BackgroundColor3 = Color3.fromRGB(60,60,60)
+end)
+
+-- AIM TOGGLE
+aimBtn.MouseButton1Click:Connect(function()
+	aimActive = not aimActive
+	aimBtn.Text = aimActive and "AIM ON" or "AIM OFF"
+	aimBtn.BackgroundColor3 = aimActive and Color3.fromRGB(30,150,30) or Color3.fromRGB(150,30,30)
+end)
+
+-- SLIDER
+local dragging = false
+sliderBall.InputBegan:Connect(function(i)
+	if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+	end
+end)
+
+UserInputService.InputChanged:Connect(function(i)
+	if dragging then
+		local x = math.clamp((i.Position.X - sliderBack.AbsolutePosition.X) / sliderBack.AbsoluteSize.X,0,1)
+		sliderBall.Position = UDim2.new(x,-7,0.5,-7)
+		fovValue = math.floor(x*360)
+		sliderLabel.Text = "FOV: "..fovValue
+	end
+end)
+
+UserInputService.InputEnded:Connect(function() dragging = false end)
+
+-- BOTÕES ESP TOGGLE
+espLineBtn.MouseButton1Click:Connect(function()
+	ESP_Line = not ESP_Line
+	espLineBtn.Text = ESP_Line and "ESP LINE ON" or "ESP LINE OFF"
+	espLineBtn.BackgroundColor3 = ESP_Line and Color3.fromRGB(30,150,30) or Color3.fromRGB(150,30,30)
+end)
+
+espBoxBtn.MouseButton1Click:Connect(function()
+	ESP_Box = not ESP_Box
+	espBoxBtn.Text = ESP_Box and "ESP BOX ON" or "ESP BOX OFF"
+	espBoxBtn.BackgroundColor3 = ESP_Box and Color3.fromRGB(30,150,30) or Color3.fromRGB(150,30,30)
+end)
+
+espHealthBtn.MouseButton1Click:Connect(function()
+	ESP_Health = not ESP_Health
+	espHealthBtn.Text = ESP_Health and "ESP HEALTH ON" or "ESP HEALTH OFF"
+	espHealthBtn.BackgroundColor3 = ESP_Health and Color3.fromRGB(30,150,30) or Color3.fromRGB(150,30,30)
+end)
+
+-- FUNÇÕES ESP
+local function NewDrawing(type)
+	local obj = Drawing.new(type)
+	obj.Visible = false
+	return obj
+end
+
+local function CreateESP(p)
+	if p == player then return end
+	ESPObjects[p] = {
+		Line = NewDrawing("Line"),
+		Box = NewDrawing("Square"),
+		Health = NewDrawing("Square")
+	}
+	local d = ESPObjects[p]
+	d.Line.Color = ESPSettings.LineColor
+	d.Line.Thickness = ESPSettings.Thickness
+	d.Box.Color = ESPSettings.LineColor
+	d.Box.Thickness = ESPSettings.Thickness
+	d.Box.Filled = false
+	d.Health.Filled = true
+end
+
+local function RemoveESP(p)
+	if ESPObjects[p] then
+		for _,v in pairs(ESPObjects[p]) do v:Remove() end
+		ESPObjects[p] = nil
+	end
+end
+
+local function HealthColor(percentage)
+	if percentage > 0.5 then
+		local factor = (percentage-0.5)*2
+		return Color3.new(1-factor,1,0)
+	else
+		local factor = percentage*2
+		return Color3.new(1,factor,0)
+	end
+end
+
+-- CÍRCULO FOV SEMPRE VISÍVEL
+local fovCircle = Drawing.new("Circle")
+fovCircle.Color = Color3.fromRGB(0,255,255)
+fovCircle.Thickness = 2
+fovCircle.Filled = false
+fovCircle.Visible = true
+
+-- LOOP ESP + FOV
+RunService.RenderStepped:Connect(function()
+	-- Atualiza círculo FOV
+	fovCircle.Radius = fovValue
+	fovCircle.Position = Vector2.new(camera.ViewportSize.X/2,camera.ViewportSize.Y/2)
+
+	-- ESP SYSTEM
+	for p,d in pairs(ESPObjects) do
+		local char = p.Character
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		local head = char and char:FindFirstChild("Head")
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+
+		if not (char and hum and head and hrp and hum.Health > 0) then
+			for _,v in pairs(d) do v.Visible = false end
+			continue
+		end
+
+		local headPos,onScreen = camera:WorldToViewportPoint(head.Position)
+		if not onScreen then
+			for _,v in pairs(d) do v.Visible = false end
+			continue
+		end
+
+		local dist = (camera.CFrame.Position-hrp.Position).Magnitude
+		if dist > ESPSettings.MaxDistance then
+			for _,v in pairs(d) do v.Visible = false end
+			continue
+		end
+
+		local height = math.clamp(2000/dist, ESPSettings.MinBoxHeight, 2000)
+		local width = math.clamp(height/2, ESPSettings.MinBoxWidth, 2000)
+
+		if ESP_Line then
+			d.Line.From = Vector2.new(camera.ViewportSize.X/2,0)
+			d.Line.To = Vector2.new(headPos.X,headPos.Y)
+			d.Line.Visible = true
+		else
+			d.Line.Visible = false
+		end
+
+		if ESP_Box then
+			d.Box.Size = Vector2.new(width,height)
+			d.Box.Position = Vector2.new(headPos.X-width/2,headPos.Y-height/4)
+			d.Box.Visible = true
+		else
+			d.Box.Visible = false
+		end
+
+		if ESP_Health then
+			local hpPercent = hum.Health/hum.MaxHealth
+			d.Health.Size = Vector2.new(4,height*hpPercent)
+			d.Health.Position = Vector2.new(d.Box.Position.X-6,d.Box.Position.Y+(height*(1-hpPercent)))
+			d.Health.Color = HealthColor(hpPercent)
+			d.Health.Visible = true
+		else
+			d.Health.Visible = false
+		end
+	end
+end)
+
+-- PLAYER HANDLER
+for _,p in pairs(Players:GetPlayers()) do CreateESP(p) end
+Players.PlayerAdded:Connect(CreateESP)
+Players.PlayerRemoving:Connect(RemoveESP)
+
+-- FUNÇÃO AIM
+local function getClosestPlayer()
+	local target, dist = nil, fovValue
+	local center = Vector2.new(camera.ViewportSize.X/2,camera.ViewportSize.Y/2)
+	for _,p in pairs(Players:GetPlayers()) do
+		if p~=player and p.Character and p.Character:FindFirstChild("Head") then
+			local pos,vis = camera:WorldToViewportPoint(p.Character.Head.Position)
+			if vis then
+				local mag = (Vector2.new(pos.X,pos.Y)-center).Magnitude
+				if mag < dist then
+					dist = mag
+					target = p.Character.Head
+				end
+			end
+		end
+	end
+	return target
+end
+
+-- LOOP AIM
+RunService.RenderStepped:Connect(function()
+	if aimActive then
+		local t = getClosestPlayer()
+		if t then
+			camera.CFrame = camera.CFrame:Lerp(CFrame.new(camera.CFrame.Position,t.Position),stickyForce)
+		end
+	end
+end)
